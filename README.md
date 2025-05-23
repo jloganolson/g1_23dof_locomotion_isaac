@@ -1,4 +1,5 @@
 # Template for Isaac Lab Projects
+python scripts/rsl_rl/play.py --task Loco --num_envs 32 --use_pretrained_checkpoint
 
 ## Overview
 
