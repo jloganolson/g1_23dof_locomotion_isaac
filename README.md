@@ -1,6 +1,6 @@
 # Template for Isaac Lab Projects
-python scripts/rsl_rl/play.py --task Loco --num_envs 32 --use_pretrained_checkpoint
-
+python scripts/rsl_rl/play.py --task Loco --num_envs 32
+python scripts/rsl_rl/train.py --task=Loco --headless --logger wandb
 ## Overview
 
 This project/repository serves as a template for building projects or extensions based on Isaac Lab.

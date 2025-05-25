@@ -25,6 +25,7 @@ from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 
 from . import mdp
+import torch
 
 from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 ##
@@ -32,7 +33,8 @@ from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 ##
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from isaaclab_assets import G1_MINIMAL_CFG  # isort: skip
-
+from .g1 import G1_CFG
+from .events import randomize_body_com, randomize_pd_scale, randomize_action_noise_range
 # from isaaclab_assets.robots.cartpole import CARTPOLE_CFG  # isort:skip
 
 
@@ -149,7 +151,7 @@ class ObservationsCfg:
 class EventCfg:
     """Configuration for events."""
 
-    # startup
+    #startup
     physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
         mode="startup",
@@ -171,6 +173,61 @@ class EventCfg:
             "operation": "add",
         },
     )
+    # cribbed from https://github.com/NVlabs/HOVER/blob/43ee08b637c84f3ad11b6af45a89586bf7f65630/neural_wbc/isaac_lab_wrapper/neural_wbc/isaac_lab_wrapper/events/event_cfg.py#L88
+    # reset_robot_physics_material = EventTerm(
+    #     func=mdp.randomize_rigid_body_material,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot"),
+    #         "static_friction_range": (0.7, 1.3),
+    #         "dynamic_friction_range": (1.0, 1.0),
+    #         "restitution_range": (0.0, 0.0),
+    #         "num_buckets": 64,
+    #     },
+    # )
+
+    # reset_robot_rigid_body_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=MISSING),
+    #         "mass_distribution_params": (0.7, 1.3),
+    #         "operation": "scale",
+    #         "distribution": "uniform",
+    #     },
+    # )
+
+    # reset_robot_base_com = EventTerm(
+    #     func=randomize_body_com,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=MISSING),
+    #         "distribution_params": (torch.tensor([-0.1, -0.1, -0.1]), torch.tensor([0.1, 0.1, 0.1])),
+    #         "operation": "add",
+    #         "distribution": "uniform",
+    #     },
+    # )
+
+    # reset_joint_pd_gain = EventTerm(
+    #     func=randomize_pd_scale,
+    #     mode="reset",
+    #     params={
+    #         "distribution_params": (0.75, 1.25),
+    #         "operation": "abs",
+    #         "distribution": "uniform",
+    #     },
+    # )
+
+    # reset_joint_action_noise_range = EventTerm(
+    #     func=randomize_action_noise_range,
+    #     mode="reset",
+    #     params={
+    #         "distribution_params": (0.5, 1.5),
+    #         "operation": "scale",
+    #         "distribution": "uniform",
+    #     },
+    # )
+
 
     # reset
     base_external_force_torque = EventTerm(
@@ -349,6 +406,18 @@ class G123dofLocomotionIsaacEnvCfg(ManagerBasedRLEnvCfg):
     events: EventCfg = EventCfg()
     curriculum: CurriculumCfg = CurriculumCfg()
 
+    # mass_randomized_body_names = [
+    #     "pelvis",
+    #     "left_hip_yaw_link",
+    #     "left_hip_roll_link",
+    #     "left_hip_pitch_link",
+    #     "right_hip_yaw_link",
+    #     "right_hip_roll_link",
+    #     "right_hip_pitch_link",
+    #     "torso_link",
+    # ]
+
+
 
     def __post_init__(self) -> None:
         """Post initialization."""
@@ -361,7 +430,9 @@ class G123dofLocomotionIsaacEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physics_material = self.scene.terrain.physics_material
         self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
 
-        self.scene.robot = G1_MINIMAL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+# 
+        self.scene.robot = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        # self.scene.robot = G1_MINIMAL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
 
         # update sensor update periods
@@ -380,6 +451,8 @@ class G123dofLocomotionIsaacEnvCfg(ManagerBasedRLEnvCfg):
         self.events.add_base_mass = None
         self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
         self.events.base_external_force_torque.params["asset_cfg"].body_names = ["torso_link"]
+        # self.events.reset_robot_rigid_body_mass.params["asset_cfg"].body_names = self.mass_randomized_body_names
+        # self.events.reset_robot_base_com.params["asset_cfg"].body_names = "torso_link"
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
             "velocity_range": {
