@@ -1,6 +1,7 @@
 # Template for Isaac Lab Projects
 python scripts/rsl_rl/play.py --task Loco --num_envs 32
 python scripts/rsl_rl/train.py --task=Loco --headless --logger wandb
+python scripts/rsl_rl/train.py --task=Loco --headless --video --video_length 100 --video_interval 500
 ## Overview
 
 This project/repository serves as a template for building projects or extensions based on Isaac Lab.
