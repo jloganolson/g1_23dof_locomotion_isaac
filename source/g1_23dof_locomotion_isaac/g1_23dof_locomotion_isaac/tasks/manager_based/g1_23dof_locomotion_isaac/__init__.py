@@ -13,7 +13,7 @@ from . import agents
 
 
 gym.register(
-    id="Template-G1-23dof-Locomotion-Isaac-v0",
+    id="Loco",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
