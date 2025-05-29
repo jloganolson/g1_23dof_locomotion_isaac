@@ -151,7 +151,7 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
         symmetry_cfg = RslRlSymmetryCfg(
-            use_data_augmentation=True,
+            use_data_augmentation=False,
             use_mirror_loss=True,
             mirror_loss_coeff=1.0,
             data_augmentation_func=data_augmentation_func_g1,
