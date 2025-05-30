@@ -154,7 +154,7 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 2000
     save_interval = 50
-    experiment_name = "g1_23dof"
+    experiment_name = "g1_23dof_sweep"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -175,10 +175,10 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
-        # symmetry_cfg = RslRlSymmetryCfg(
-        #     use_data_augmentation=False,
-        #     use_mirror_loss=True,
-        #     mirror_loss_coeff=1.0,
-        #     data_augmentation_func=data_augmentation_func_g1,
-        # )
+        symmetry_cfg = RslRlSymmetryCfg(
+            use_data_augmentation=False,
+            use_mirror_loss=True,
+            mirror_loss_coeff=1.0,
+            data_augmentation_func=data_augmentation_func_g1,
+        )
     )
