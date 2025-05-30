@@ -2,51 +2,42 @@ import subprocess
 import os
 
 def run_command(command_args, description="Running command"):
-    """Helper function to execute shell commands."""
+    """Helper function to execute shell commands and stream output to CLI."""
     print(f"\n--- {description} ---")
     print(f"Command: {' '.join(command_args)}")
     try:
-        # Use subprocess.run for robust command execution
-        # check=True will raise a CalledProcessError if the command returns a non-zero exit code
-        # text=True decodes stdout/stderr as text
-        subprocess.run(command_args, check=True, text=True, capture_output=True)
-        print("Command completed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing command: {e}")
-        print(f"STDOUT:\n{e.stdout}")
-        print(f"STDERR:\n{e.stderr}")
-        exit(1) # Exit if a command fails
+        # Popen allows streaming output
+        process = subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+        # Stream output line by line
+        for line in process.stdout:
+            print(line, end='') # `end=''` prevents extra newlines
+
+        process.wait() # Wait for the process to complete
+
+        if process.returncode != 0:
+            print(f"\nError: Command exited with non-zero status {process.returncode}")
+            exit(1) # Exit if a command fails
+        else:
+            print("\nCommand completed successfully.")
+
     except FileNotFoundError:
         print(f"Error: Command not found. Make sure '{command_args[0]}' is in your PATH or correctly specified.")
         exit(1)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        exit(1)
+
+# ... (rest of your main function remains the same) ...
+# Define base commands, parameter_sets, and loop through them as before.
+# The 'main' function and `if __name__ == "__main__":` block are unchanged.
 
 def main():
-    # --- Conda Environment Activation (Crucial for running from a non-initialized shell) ---
-    # This block ensures that the Python script runs within the correct Conda environment
-    # even if the shell it's launched from hasn't sourced Conda.
-    # It checks if the environment is already active, and activates it if not.
-    # This might look a bit different from the shell script, as we're managing the environment
-    # from inside Python for subprocess calls.
-
-    # Option 1: Assume `python` is already in the right env or rely on `conda run` (simpler)
-    # This is often the easiest way if you want the script itself to manage environment activation.
-    # We'll use this approach for simplicity in the examples below, assuming
-    # 'conda activate env_isaaclab' has been run *before* executing this script,
-    # OR we use `conda run -n env_isaaclab python run_experiments.py`.
-
-    # Option 2: Programmatically activate Conda (more complex for general use)
-    # If this script *must* activate Conda itself regardless of how it's launched,
-    # you'd need to find the conda.sh and source it, then restart the script in the env.
-    # For typical experiment management, it's simpler to ensure the script is run from
-    # the correct environment or use `conda run`.
-    # Let's assume you'll run this script using `conda run` or after `conda activate`.
-
     # Define base commands
     TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless"]
     PLAY_BASE_CMD = ["python", "scripts/rsl_rl/play.py", "--task=Loco", "--headless", "--video", "--video_length", "200", "--enable_cameras"]
 
     # Define your parameter sets as a list of dictionaries
-    # Each dictionary represents a set of command-line arguments
     parameter_sets = [
         # Parameter Set 1
         {"description": "Parameter Set 1",
