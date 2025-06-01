@@ -3,12 +3,9 @@ import os
 import itertools
 
 # Parameter ranges for the sweep
-AIR_TIME_WEIGHTS = [ 1.0, 5.0, 20.0]
-TORQUE_WEIGHTS = [ -1.0e-5, -1.0e-4, -1.0e-3]
-ACC_WEIGHTS = [-1.0e-7, -5.0e-6, -5.0e-5]
-# AIR_TIME_WEIGHTS = [.25, 1.0, 5.0, 20.0]
-# TORQUE_WEIGHTS = [-2.0e-6, -1.0e-5, -1.0e-4, -1.0e-3]
-# ACC_WEIGHTS = [-2.5e-7, -1.0e-7, -5.0e-6, -5.0e-5]
+AIR_TIME_WEIGHTS = [ 2.0, 4.0, 5.0]
+TORQUE_WEIGHTS = [ -1.0e-5, -1.0e-4]
+MIRROR_LOSS_COEFFS = [0.0, 0.5, 1.0]
 
 def run_command(command_args, description="Running command"):
     """Helper function to execute shell commands and stream output to CLI."""
@@ -43,15 +40,15 @@ def main():
     PLAY_BASE_CMD = ["python", "scripts/rsl_rl/play.py", "--task=Loco", "--headless", "--video", "--video_length", "200", "--enable_cameras"]
 
     # Generate all combinations of parameters
-    parameter_combinations = list(itertools.product(AIR_TIME_WEIGHTS, TORQUE_WEIGHTS, ACC_WEIGHTS))
+    parameter_combinations = list(itertools.product(AIR_TIME_WEIGHTS, TORQUE_WEIGHTS, MIRROR_LOSS_COEFFS))
     
     print(f"Generated {len(parameter_combinations)} parameter combinations to test.")
     print(f"Air time weights: {AIR_TIME_WEIGHTS}")
     print(f"Torque weights: {TORQUE_WEIGHTS}")
-    print(f"Acceleration weights: {ACC_WEIGHTS}")
+    print(f"Mirror loss coeffs: {MIRROR_LOSS_COEFFS}")
     
-    for i, (air_time_weight, torque_weight, acc_weight) in enumerate(parameter_combinations):
-        description = f"Set {i+1}/{len(parameter_combinations)}: air_time={air_time_weight}, torque={torque_weight:.1e}, acc={acc_weight:.1e}"
+    for i, (air_time_weight, torque_weight, mirror_loss_coeff) in enumerate(parameter_combinations):
+        description = f"Set {i+1}/{len(parameter_combinations)}: air_time={air_time_weight}, torque={torque_weight:.1e}, mirror_loss_coeff={mirror_loss_coeff:.1e}"
         
         print(f"\n{'='*80}\nStarting {description}\n{'='*80}")
 
@@ -59,7 +56,7 @@ def main():
         train_args = [
             f"env.rewards.feet_air_time.weight={air_time_weight}",
             f"env.rewards.dof_torques_l2.weight={torque_weight}",
-            f"env.rewards.dof_acc_l2.weight={acc_weight}"
+            f"agent.algorithm.symmetry_cfg.mirror_loss_coeff={mirror_loss_coeff}"
         ]
 
         # Construct the full train command
