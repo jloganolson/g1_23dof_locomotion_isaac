@@ -35,7 +35,7 @@ docker/.container.cfg
 !.vscode
 
 # Outputs
-**/output/*
+**/output_videos/*
 **/outputs/*
 **/videos/*
 **/wandb/*

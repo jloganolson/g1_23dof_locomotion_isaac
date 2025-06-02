@@ -1,12 +1,16 @@
 import subprocess
 import os
 import itertools
+from sweep_analyzer import analyze_sweep_results
 
 # Parameter ranges for the sweep
 AIR_TIME_WEIGHTS = [1.0, 3.0, 5.0]
 USE_DATA_AUGMENTATION = [False, True]
 USE_MIRROR_LOSS = [False, True]
 MIRROR_LOSS_COEFFS = [0.5, 1.0]  # Only used when USE_MIRROR_LOSS is True
+
+# Experiment configuration
+EXPERIMENT_NAME = "g1_23dof_sweep_v5"  # Update version for new sweep
 
 def run_command(command_args, description="Running command"):
     """Helper function to execute shell commands and stream output to CLI."""
@@ -36,8 +40,8 @@ def run_command(command_args, description="Running command"):
         exit(1)
 
 def main():
-    # Define base commands
-    TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless"]
+    # Define base commands - updated to use EXPERIMENT_NAME
+    TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless", f"--experiment={EXPERIMENT_NAME}"]
     PLAY_BASE_CMD = ["python", "scripts/rsl_rl/play.py", "--task=Loco", "--headless", "--video", "--video_length", "200", "--enable_cameras"]
 
     # Generate parameter combinations
@@ -54,6 +58,7 @@ def main():
                     # If mirror loss is disabled, coefficient doesn't matter (use None as placeholder)
                     parameter_combinations.append((air_time_weight, use_data_aug, use_mirror_loss, None))
     
+    print(f"Starting parameter sweep: {EXPERIMENT_NAME}")
     print(f"Generated {len(parameter_combinations)} parameter combinations to test.")
     print(f"Air time weights: {AIR_TIME_WEIGHTS}")
     print(f"Use data augmentation: {USE_DATA_AUGMENTATION}")
@@ -87,7 +92,35 @@ def main():
         full_play_cmd = PLAY_BASE_CMD
         run_command(full_play_cmd, f"Playing for {description}")
 
-    print(f"\nAll {len(parameter_combinations)} parameter combinations finished.")
+    print(f"\n🎉 All {len(parameter_combinations)} parameter combinations finished!")
+    
+    # Automatically analyze results
+    print(f"\n🔍 Starting automatic analysis of sweep results...")
+    
+    try:
+        results = analyze_sweep_results(
+            experiment_name=EXPERIMENT_NAME,
+            air_time_weights=AIR_TIME_WEIGHTS,
+            use_data_augmentation=USE_DATA_AUGMENTATION,
+            use_mirror_loss=USE_MIRROR_LOSS,
+            mirror_loss_coeffs=MIRROR_LOSS_COEFFS
+        )
+        
+        if results and results['success']:
+            print(f"\n🎊 SWEEP COMPLETED SUCCESSFULLY!")
+            print(f"📁 Results saved:")
+            print(f"   📄 Parameter guide: {results['param_guide_file']}")
+            print(f"   🎬 Basic concatenated video: {results['video_file']}")
+            if results.get('labeled_video_file'):
+                print(f"   🏷️  Labeled concatenated video: {results['labeled_video_file']}")
+            print(f"   🗺️  Video mapping: {results['video_mapping_file']}")
+        else:
+            print(f"\n⚠️  Sweep completed but analysis had issues. Check the output above.")
+            
+    except Exception as e:
+        print(f"\n❌ Error during analysis: {e}")
+        print(f"   You can manually run analysis later with:")
+        print(f"   python sweep_analyzer.py")
 
 if __name__ == "__main__":
-    main()
+    main() 
