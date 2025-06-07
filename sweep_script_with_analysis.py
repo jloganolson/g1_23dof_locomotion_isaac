@@ -4,13 +4,13 @@ import itertools
 from sweep_analyzer import analyze_sweep_results
 
 # Parameter ranges for the sweep
-AIR_TIME_WEIGHTS = [1.0, 3.0, 5.0]
+AIR_TIME_WEIGHTS = [3.0, 5.0]
 USE_DATA_AUGMENTATION = [False, True]
 USE_MIRROR_LOSS = [False, True]
 MIRROR_LOSS_COEFFS = [0.5, 1.0]  # Only used when USE_MIRROR_LOSS is True
 
 # Experiment configuration
-EXPERIMENT_NAME = "g1_23dof_sweep_v5"  # Update version for new sweep
+EXPERIMENT_NAME = "g1_23dof_sweep_v6_1"  # Update version for new sweep
 
 def run_command(command_args, description="Running command"):
     """Helper function to execute shell commands and stream output to CLI."""
@@ -41,7 +41,7 @@ def run_command(command_args, description="Running command"):
 
 def main():
     # Define base commands - updated to use EXPERIMENT_NAME
-    TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless", f"--experiment={EXPERIMENT_NAME}"]
+    TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless", f"agent.experiment_name={EXPERIMENT_NAME}"]
     PLAY_BASE_CMD = ["python", "scripts/rsl_rl/play.py", "--task=Loco", "--headless", "--video", "--video_length", "200", "--enable_cameras"]
 
     # Generate parameter combinations

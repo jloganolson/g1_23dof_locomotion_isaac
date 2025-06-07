@@ -69,9 +69,9 @@ def mirror_joint_tensor(original: torch.Tensor, mirrored: torch.Tensor, offset: 
         mirrored[..., right_idx] = original[..., left_idx]
     
     # Invert yaw/roll joints
-    mirrored[..., invert_indices] = -original[..., invert_indices]
+    mirrored[..., invert_indices] = -mirrored[..., invert_indices]
     
-    # return mirrored
+
 
 
 def mirror_observation_policy(obs):
@@ -154,7 +154,7 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 1500
     save_interval = 50
-    experiment_name = "g1_23dof_sweep_v4"
+    experiment_name = "g1_23dof_sweep_v6"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
