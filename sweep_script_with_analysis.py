@@ -6,11 +6,11 @@ from sweep_analyzer import analyze_sweep_results
 # Parameter ranges for the sweep
 AIR_TIME_WEIGHTS = [3.0, 5.0]
 USE_DATA_AUGMENTATION = [False, True]
-USE_MIRROR_LOSS = [False, True]
-MIRROR_LOSS_COEFFS = [0.5, 1.0]  # Only used when USE_MIRROR_LOSS is True
+BOTH_FEET_AIR_WEIGHTS = [0.0, 1e-2, 1e-1, 1, 5]
+MIRROR_LOSS_COEFFS = [0.5, 1.0]
 
 # Experiment configuration
-EXPERIMENT_NAME = "g1_23dof_sweep_v6_1"  # Update version for new sweep
+EXPERIMENT_NAME = "g1_23dof_sweep_v7"  # Must match cfg 
 
 def run_command(command_args, description="Running command"):
     """Helper function to execute shell commands and stream output to CLI."""
@@ -41,7 +41,7 @@ def run_command(command_args, description="Running command"):
 
 def main():
     # Define base commands - updated to use EXPERIMENT_NAME
-    TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless", f"agent.experiment_name={EXPERIMENT_NAME}"]
+    TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless"]
     PLAY_BASE_CMD = ["python", "scripts/rsl_rl/play.py", "--task=Loco", "--headless", "--video", "--video_length", "200", "--enable_cameras"]
 
     # Generate parameter combinations
@@ -49,27 +49,19 @@ def main():
     
     for air_time_weight in AIR_TIME_WEIGHTS:
         for use_data_aug in USE_DATA_AUGMENTATION:
-            for use_mirror_loss in USE_MIRROR_LOSS:
-                if use_mirror_loss:
-                    # If mirror loss is enabled, try different coefficients
-                    for mirror_loss_coeff in MIRROR_LOSS_COEFFS:
-                        parameter_combinations.append((air_time_weight, use_data_aug, use_mirror_loss, mirror_loss_coeff))
-                else:
-                    # If mirror loss is disabled, coefficient doesn't matter (use None as placeholder)
-                    parameter_combinations.append((air_time_weight, use_data_aug, use_mirror_loss, None))
+            for both_feet_air_weight in BOTH_FEET_AIR_WEIGHTS:
+                for mirror_loss_coeff in MIRROR_LOSS_COEFFS:
+                    parameter_combinations.append((air_time_weight, use_data_aug, both_feet_air_weight, mirror_loss_coeff))
     
     print(f"Starting parameter sweep: {EXPERIMENT_NAME}")
     print(f"Generated {len(parameter_combinations)} parameter combinations to test.")
     print(f"Air time weights: {AIR_TIME_WEIGHTS}")
     print(f"Use data augmentation: {USE_DATA_AUGMENTATION}")
-    print(f"Use mirror loss: {USE_MIRROR_LOSS}")
-    print(f"Mirror loss coeffs (when enabled): {MIRROR_LOSS_COEFFS}")
+    print(f"Both feet air weights: {BOTH_FEET_AIR_WEIGHTS}")
+    print(f"Mirror loss coeffs: {MIRROR_LOSS_COEFFS}")
     
-    for i, (air_time_weight, use_data_aug, use_mirror_loss, mirror_loss_coeff) in enumerate(parameter_combinations):
-        if mirror_loss_coeff is not None:
-            description = f"Set {i+1}/{len(parameter_combinations)}: air_time={air_time_weight}, data_aug={use_data_aug}, mirror_loss={use_mirror_loss}, mirror_coeff={mirror_loss_coeff}"
-        else:
-            description = f"Set {i+1}/{len(parameter_combinations)}: air_time={air_time_weight}, data_aug={use_data_aug}, mirror_loss={use_mirror_loss}"
+    for i, (air_time_weight, use_data_aug, both_feet_air_weight, mirror_loss_coeff) in enumerate(parameter_combinations):
+        description = f"Set {i+1}/{len(parameter_combinations)}: air_time={air_time_weight}, data_aug={use_data_aug}, both_feet_air={both_feet_air_weight}, mirror_coeff={mirror_loss_coeff}"
         
         print(f"\n{'='*80}\nStarting {description}\n{'='*80}")
 
@@ -77,12 +69,10 @@ def main():
         train_args = [
             f"env.rewards.feet_air_time.weight={air_time_weight}",
             f"agent.algorithm.symmetry_cfg.use_data_augmentation={use_data_aug}",
-            f"agent.algorithm.symmetry_cfg.use_mirror_loss={use_mirror_loss}"
+            f"agent.algorithm.symmetry_cfg.use_mirror_loss=True",
+            f"agent.algorithm.symmetry_cfg.mirror_loss_coeff={mirror_loss_coeff}",
+            f"env.rewards.both_feet_air.weight={both_feet_air_weight}"
         ]
-        
-        # Add mirror loss coefficient only if mirror loss is enabled
-        if use_mirror_loss and mirror_loss_coeff is not None:
-            train_args.append(f"agent.algorithm.symmetry_cfg.mirror_loss_coeff={mirror_loss_coeff}")
 
         # Construct the full train command
         full_train_cmd = TRAIN_BASE_CMD + train_args
@@ -102,7 +92,7 @@ def main():
             experiment_name=EXPERIMENT_NAME,
             air_time_weights=AIR_TIME_WEIGHTS,
             use_data_augmentation=USE_DATA_AUGMENTATION,
-            use_mirror_loss=USE_MIRROR_LOSS,
+            both_feet_air_weights=BOTH_FEET_AIR_WEIGHTS,
             mirror_loss_coeffs=MIRROR_LOSS_COEFFS
         )
         
@@ -124,3 +114,10 @@ def main():
 
 if __name__ == "__main__":
     main() 
+    import os
+    import time
+    
+    print("\n⏳ Waiting 5 seconds before suspend...")
+    time.sleep(5)
+    print("💤 Suspending computer...")
+    os.system("systemctl suspend")

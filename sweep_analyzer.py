@@ -350,7 +350,7 @@ def analyze_sweep_results(experiment_name, air_time_weights=None, use_data_augme
 if __name__ == "__main__":
     # Example usage - can be called directly for testing
     analyze_sweep_results(
-        experiment_name="g1_23dof_sweep_v5",
+        experiment_name="g1_23dof_sweep_v6_1",
         air_time_weights=[3.0, 5.0],
         use_data_augmentation=[False, True],
         use_mirror_loss=[False, True],

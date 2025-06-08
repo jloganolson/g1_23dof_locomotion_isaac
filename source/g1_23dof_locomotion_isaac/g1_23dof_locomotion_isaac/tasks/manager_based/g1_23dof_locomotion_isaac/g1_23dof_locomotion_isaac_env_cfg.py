@@ -354,6 +354,16 @@ class RewardsCfg:
             "threshold": 0.4,
         },
     )
+
+
+    both_feet_air = RewTerm(
+        func=mdp.both_feet_air,
+        weight=-0.25,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+        },
+    )
+
     feet_slide = RewTerm(
         func=mdp.feet_slide,
         weight=-0.1,
