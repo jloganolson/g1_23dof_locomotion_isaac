@@ -358,7 +358,7 @@ class RewardsCfg:
 
     both_feet_air = RewTerm(
         func=mdp.both_feet_air,
-        weight=-0.25,
+        weight=-0.5,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
         },
@@ -512,7 +512,7 @@ class G123dofLocomotionIsaacEnvCfg(ManagerBasedRLEnvCfg):
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint",".*_ankle_pitch_joint", ".*_ankle_roll_joint"]
         )
-        self.rewards.feet_air_time.weight = 5.
+        self.rewards.feet_air_time.weight = 3.
         self.rewards.feet_air_time.params["threshold"] = 0.2
         # self.rewards.dof_torques_l2.weight = -2.0e-6
         self.rewards.dof_torques_l2.weight = -1.0e-4

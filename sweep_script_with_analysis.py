@@ -1,18 +1,72 @@
 import subprocess
-import os
 import itertools
 from sweep_analyzer import analyze_sweep_results
 
-# Parameter ranges for the sweep
-AIR_TIME_WEIGHTS = [3.0, 5.0]
-USE_DATA_AUGMENTATION = [False, True]
-BOTH_FEET_AIR_WEIGHTS = [0.0, 1e-2, 1e-1, 1, 5]
-MIRROR_LOSS_COEFFS = [0.5, 1.0]
+
 
 # Experiment configuration
-EXPERIMENT_NAME = "g1_23dof_sweep_v7"  # Must match cfg 
+EXPERIMENT_NAME = "g1_23dof_sweep_v9"  # Must match cfg 
 
-def run_command(command_args, description="Running command"):
+# =============================================================================
+# PARAMETER SWEEP CONFIGURATION - CENTRALIZED
+# =============================================================================
+# Define which parameters to sweep (as lists) and which to keep fixed (as single values)
+SWEEP_CONFIG = {
+    # Parameters to sweep - each should be a list of values to test
+    "SWEEP_PARAMS": {
+        "agent.algorithm.symmetry_cfg.use_mirror_loss": [True, False],
+        "env.rewards.feet_air_time.params.threshold": [0.1, 0.2],
+        "env.rewards.both_feet_air.weight": [-0.1, -0.],
+        "env.rewards.track_lin_vel_xy_exp.weight": [1.,2.],
+        "env.rewards.track_ang_vel_z_exp.weight": [2.,1.],
+    },
+
+}
+# =============================================================================
+
+def generate_parameter_combinations():
+    """Generate all combinations of sweep parameters."""
+    sweep_params = SWEEP_CONFIG["SWEEP_PARAMS"]
+    
+    if not sweep_params:
+        return [{}]  # Return single empty combination if no sweep params
+    
+    # Get parameter names and their possible values
+    param_names = list(sweep_params.keys())
+    param_values = list(sweep_params.values())
+    
+    # Generate all combinations
+    combinations = []
+    for combination in itertools.product(*param_values):
+        param_dict = dict(zip(param_names, combination))
+        combinations.append(param_dict)
+    
+    return combinations
+
+def build_train_args(sweep_params):
+    """Build training arguments from sweep and fixed parameters."""
+    train_args = []
+    
+    # Add sweep parameters
+    for param_name, param_value in sweep_params.items():
+        train_args.append(f"{param_name}={param_value}")
+    
+   
+    
+    return train_args
+
+def get_combination_description(sweep_params, combination_num, total_combinations):
+    """Generate a description for the current parameter combination."""
+    if not sweep_params:
+        return f"Set {combination_num}/{total_combinations}: (fixed parameters only)"
+    
+    param_strs = [f"{param_name.split('.')[-1]}={param_value}" 
+                  for param_name, param_value in sweep_params.items()]
+    param_description = ", ".join(param_strs)
+    
+    return f"Set {combination_num}/{total_combinations}: {param_description}"
+
+def run_command(command_args, description="Running command", prefix=None):
     """Helper function to execute shell commands and stream output to CLI."""
     print(f"\n--- {description} ---")
     print(f"Command: {' '.join(command_args)}")
@@ -22,7 +76,11 @@ def run_command(command_args, description="Running command"):
 
         # Stream output line by line
         for line in process.stdout:
-            print(line, end='') # `end=''` prevents extra newlines
+            if prefix:
+                # Add prefix to each line, preserving original formatting
+                print(f"[{prefix}] {line}", end='')
+            else:
+                print(line, end='') # `end=''` prevents extra newlines
 
         process.wait() # Wait for the process to complete
 
@@ -42,45 +100,36 @@ def run_command(command_args, description="Running command"):
 def main():
     # Define base commands - updated to use EXPERIMENT_NAME
     TRAIN_BASE_CMD = ["python", "scripts/rsl_rl/train.py", "--task=Loco", "--headless"]
-    PLAY_BASE_CMD = ["python", "scripts/rsl_rl/play.py", "--task=Loco", "--headless", "--video", "--video_length", "200", "--enable_cameras"]
+    PLAY_BASE_CMD = ["python", "scripts/rsl_rl/play.py", "--task=Loco", "--headless", "--video", "--video_length", "100", "--enable_cameras"]
 
     # Generate parameter combinations
-    parameter_combinations = []
-    
-    for air_time_weight in AIR_TIME_WEIGHTS:
-        for use_data_aug in USE_DATA_AUGMENTATION:
-            for both_feet_air_weight in BOTH_FEET_AIR_WEIGHTS:
-                for mirror_loss_coeff in MIRROR_LOSS_COEFFS:
-                    parameter_combinations.append((air_time_weight, use_data_aug, both_feet_air_weight, mirror_loss_coeff))
+    parameter_combinations = generate_parameter_combinations()
     
     print(f"Starting parameter sweep: {EXPERIMENT_NAME}")
     print(f"Generated {len(parameter_combinations)} parameter combinations to test.")
-    print(f"Air time weights: {AIR_TIME_WEIGHTS}")
-    print(f"Use data augmentation: {USE_DATA_AUGMENTATION}")
-    print(f"Both feet air weights: {BOTH_FEET_AIR_WEIGHTS}")
-    print(f"Mirror loss coeffs: {MIRROR_LOSS_COEFFS}")
     
-    for i, (air_time_weight, use_data_aug, both_feet_air_weight, mirror_loss_coeff) in enumerate(parameter_combinations):
-        description = f"Set {i+1}/{len(parameter_combinations)}: air_time={air_time_weight}, data_aug={use_data_aug}, both_feet_air={both_feet_air_weight}, mirror_coeff={mirror_loss_coeff}"
+    # Print sweep configuration
+    print(f"\nSweep parameters:")
+    for param_name, param_values in SWEEP_CONFIG["SWEEP_PARAMS"].items():
+        print(f"  {param_name}: {param_values}")
+    
+    
+    for i, combination in enumerate(parameter_combinations):
+        description = get_combination_description(combination, i+1, len(parameter_combinations))
+        run_prefix = f"Run {i+1}/{len(parameter_combinations)}"
         
         print(f"\n{'='*80}\nStarting {description}\n{'='*80}")
 
         # Construct parameter arguments
-        train_args = [
-            f"env.rewards.feet_air_time.weight={air_time_weight}",
-            f"agent.algorithm.symmetry_cfg.use_data_augmentation={use_data_aug}",
-            f"agent.algorithm.symmetry_cfg.use_mirror_loss=True",
-            f"agent.algorithm.symmetry_cfg.mirror_loss_coeff={mirror_loss_coeff}",
-            f"env.rewards.both_feet_air.weight={both_feet_air_weight}"
-        ]
+        train_args = build_train_args(combination)
 
         # Construct the full train command
         full_train_cmd = TRAIN_BASE_CMD + train_args
-        run_command(full_train_cmd, f"Training for {description}")
+        run_command(full_train_cmd, f"Training for {description}", prefix=run_prefix)
 
         # Construct the full play command (no extra args needed for play usually)
         full_play_cmd = PLAY_BASE_CMD
-        run_command(full_play_cmd, f"Playing for {description}")
+        run_command(full_play_cmd, f"Playing for {description}", prefix=run_prefix)
 
     print(f"\n🎉 All {len(parameter_combinations)} parameter combinations finished!")
     
@@ -88,18 +137,13 @@ def main():
     print(f"\n🔍 Starting automatic analysis of sweep results...")
     
     try:
-        results = analyze_sweep_results(
-            experiment_name=EXPERIMENT_NAME,
-            air_time_weights=AIR_TIME_WEIGHTS,
-            use_data_augmentation=USE_DATA_AUGMENTATION,
-            both_feet_air_weights=BOTH_FEET_AIR_WEIGHTS,
-            mirror_loss_coeffs=MIRROR_LOSS_COEFFS
-        )
+        # Simple analysis with just the experiment name
+        results = analyze_sweep_results(experiment_name=EXPERIMENT_NAME)
         
         if results and results['success']:
             print(f"\n🎊 SWEEP COMPLETED SUCCESSFULLY!")
             print(f"📁 Results saved:")
-            print(f"   📄 Parameter guide: {results['param_guide_file']}")
+            print(f"   📄 Experiment guide: {results['experiment_guide_file']}")
             print(f"   🎬 Basic concatenated video: {results['video_file']}")
             if results.get('labeled_video_file'):
                 print(f"   🏷️  Labeled concatenated video: {results['labeled_video_file']}")
@@ -114,10 +158,8 @@ def main():
 
 if __name__ == "__main__":
     main() 
-    import os
     import time
-    
     print("\n⏳ Waiting 5 seconds before suspend...")
     time.sleep(5)
     print("💤 Suspending computer...")
-    os.system("systemctl suspend")
+    subprocess.run(["systemctl", "suspend"], check=True)

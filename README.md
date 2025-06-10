@@ -2,6 +2,9 @@
 python scripts/rsl_rl/play.py --task Loco --num_envs 32
 python scripts/rsl_rl/train.py --task=Loco --headless --logger wandb
 python scripts/rsl_rl/train.py --task=Loco --headless --video --video_length 100 --video_interval 500
+
+python scripts/rsl_rl/play.py --task=Loco --checkpoint='/home/logan/Projects/g1_23dof_locomotion_isaac/logs/rsl_rl/g1_23dof_sweep_v8/2025-06-09_07-21-34/model_1499.pt'  --headless --video --video_length 200 --enable_cameras 
+
 ## Overview
 
 This project/repository serves as a template for building projects or extensions based on Isaac Lab.
