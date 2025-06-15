@@ -20,7 +20,7 @@ import mujoco
 import mujoco.viewer as viewer
 import numpy as np
 import torch
-# from keyboard_reader import KeyboardController
+from keyboard_reader import KeyboardController
 
 POLICY_PATH = "policy.pt"
 
@@ -165,11 +165,11 @@ class TorchController:
     self._counter = 0
     self._n_substeps = n_substeps
 
-    # self._controller = KeyboardController(
-    #     vel_scale_x=vel_scale_x,
-    #     vel_scale_y=vel_scale_y,
-    #     vel_scale_rot=vel_scale_rot,
-    # )
+    self._controller = KeyboardController(
+        vel_scale_x=vel_scale_x,
+        vel_scale_y=vel_scale_y,
+        vel_scale_rot=vel_scale_rot,
+    )
 
     # Initialize joint mappings
     init_joint_mappings()
@@ -187,8 +187,8 @@ class TorchController:
     imu_xmat = data.site_xmat[model.site("imu_in_pelvis").id].reshape(3, 3)
     projected_gravity = imu_xmat.T @ world_gravity
     # Get velocity commands (3 dimensions)
-    # velocity_commands = self._controller.get_command()
-    velocity_commands = np.array([0.25, 0.0, 0.0])  # Forward velocity command
+    velocity_commands = self._controller.get_command()
+    # velocity_commands = np.array([0.25, 0.0, 0.0])  # Forward velocity command
     
     # Get joint positions and velocities in MuJoCo order, then convert to PyTorch order
     joint_pos_mujoco = data.qpos[7:] - self._default_angles

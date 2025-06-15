@@ -240,6 +240,6 @@ def analyze_sweep_results(experiment_name, base_logs_dir="logs/rsl_rl", create_o
 if __name__ == "__main__":
     # Example usage - can be called directly for testing
     analyze_sweep_results(
-        experiment_name="g1_23dof_sweep_v9",
+        experiment_name="g1_23dof_sweep_v14",
         create_overlays=True
     ) 

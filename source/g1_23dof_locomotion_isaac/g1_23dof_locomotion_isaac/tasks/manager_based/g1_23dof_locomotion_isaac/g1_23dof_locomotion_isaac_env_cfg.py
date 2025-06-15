@@ -22,7 +22,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.terrains import TerrainImporterCfg
-from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
+# from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, ImuCfg, patterns
 
 from . import mdp
 import torch
@@ -79,7 +79,7 @@ class G123dofLocomotionIsaacSceneCfg(InteractiveSceneCfg):
         mesh_prim_paths=["/World/ground"],
     )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
-    # lights
+    # imu_pelvis = ImuCfg(prim_path="{ENV_REGEX_NS}/Robot/base",offset)
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
@@ -347,18 +347,18 @@ class RewardsCfg:
     )
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
-        weight=0.25,
+        weight=5.,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
-            "threshold": 0.4,
+            "threshold": 0.2,
         },
     )
 
 
     both_feet_air = RewTerm(
         func=mdp.both_feet_air,
-        weight=-0.5,
+        weight=-0.1,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
         },
@@ -512,8 +512,8 @@ class G123dofLocomotionIsaacEnvCfg(ManagerBasedRLEnvCfg):
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint",".*_ankle_pitch_joint", ".*_ankle_roll_joint"]
         )
-        self.rewards.feet_air_time.weight = 3.
-        self.rewards.feet_air_time.params["threshold"] = 0.2
+        # self.rewards.feet_air_time.weight = 5.
+        # self.rewards.feet_air_time.params["threshold"] = 0.2
         # self.rewards.dof_torques_l2.weight = -2.0e-6
         self.rewards.dof_torques_l2.weight = -1.0e-4
 
