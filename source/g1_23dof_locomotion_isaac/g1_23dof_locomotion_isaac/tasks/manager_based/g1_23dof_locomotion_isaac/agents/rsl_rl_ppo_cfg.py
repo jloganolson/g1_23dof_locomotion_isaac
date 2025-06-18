@@ -69,12 +69,31 @@ def mirror_joint_tensor(original: torch.Tensor, mirrored: torch.Tensor, offset: 
         mirrored[..., right_idx] = original[..., left_idx]
     
     # Invert yaw/roll joints
-    mirrored[..., invert_indices] = -original[..., invert_indices]
+    mirrored[..., invert_indices] = -mirrored[..., invert_indices]
     
-    # return mirrored
 
 
-def mirror_observation(obs):
+
+def mirror_observation_policy(obs):
+    if obs is None:
+        return obs
+    
+    _obs = torch.clone(obs)
+    flipped_obs = torch.clone(obs)
+    # Mirror projected gravity (flip y)
+    flipped_obs[..., 1] = -_obs[..., 1]  # y component of projected_gravity
+    
+    # Mirror velocity commands (flip y and z)
+    flipped_obs[..., 4] = -_obs[..., 4]  # y component of velocity_commands
+    flipped_obs[..., 5] = -_obs[..., 5]  # z component of velocity_commands
+
+    mirror_joint_tensor(_obs,flipped_obs,6) 
+    mirror_joint_tensor(_obs,flipped_obs,29) 
+    mirror_joint_tensor(_obs,flipped_obs,52) 
+
+    return torch.vstack((_obs, flipped_obs))
+
+def mirror_observation_critic(obs):
     if obs is None:
         return obs
     
@@ -118,7 +137,13 @@ def mirror_actions(actions):
 
 
 def data_augmentation_func_g1(env, obs, actions, obs_type):
-    obs_batch = mirror_observation(obs)
+    if obs_type == "policy":
+        obs_batch = mirror_observation_policy(obs)
+    elif obs_type == "critic":
+        obs_batch = mirror_observation_critic(obs)
+    else:
+        raise ValueError(f"Invalid observation type: {obs_type}")
+    
     mean_actions_batch = mirror_actions(actions)
     return obs_batch, mean_actions_batch
     # return obs_aug, actions_aug
@@ -129,7 +154,7 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 2000
     save_interval = 50
-    experiment_name = "g1_23dof"
+    experiment_name = "g1_23dof_sweep_v16"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -153,7 +178,7 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
         symmetry_cfg = RslRlSymmetryCfg(
             use_data_augmentation=False,
             use_mirror_loss=True,
-            mirror_loss_coeff=1.0,
+            mirror_loss_coeff=0.5,
             data_augmentation_func=data_augmentation_func_g1,
         )
     )

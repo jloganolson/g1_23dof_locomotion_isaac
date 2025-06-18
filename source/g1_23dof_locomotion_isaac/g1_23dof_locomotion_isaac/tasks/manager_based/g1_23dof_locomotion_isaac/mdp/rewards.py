@@ -104,3 +104,28 @@ def track_ang_vel_z_world_exp(
     asset = env.scene[asset_cfg.name]
     ang_vel_error = torch.square(env.command_manager.get_command(command_name)[:, 2] - asset.data.root_ang_vel_w[:, 2])
     return torch.exp(-ang_vel_error / std**2)
+
+
+def both_feet_air(env, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Penalize when both feet are in the air.
+
+    This function penalizes the agent when both feet are off the ground simultaneously, which helps
+    promote stable bipedal locomotion by encouraging at least one foot to maintain ground contact.
+    
+    Args:
+        env: The environment instance.
+        sensor_cfg: Configuration for the contact sensor.
+
+    Returns:
+        1 if both feet are airborne, 0 otherwise.
+    """
+    # contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    # # Check if feet are in contact (contact force > threshold)
+    # in_contact = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+    # # Count feet in contact
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    # compute the reward
+    air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]
+    feet_in_air = air_time > 0.0
+    both_feet_air = torch.sum(feet_in_air.int(), dim=1) == 2
+    return both_feet_air.float()
