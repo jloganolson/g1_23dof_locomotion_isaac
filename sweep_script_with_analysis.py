@@ -8,6 +8,7 @@ from datetime import datetime
 
 # Experiment configuration
 EXPERIMENT_NAME = "g1_23dof_sweep_v16"  # Must match cfg 
+START_FROM_RUN = 27  # Set to 1 to start from beginning, or higher to resume from a specific run
 
 # =============================================================================
 # PARAMETER SWEEP CONFIGURATION - CENTRALIZED
@@ -31,13 +32,18 @@ SWEEP_CONFIG = {
 }
 # =============================================================================
 
-def log_parameter_combination(combination, run_number, total_runs, log_file, status="STARTED", error=None):
+def log_parameter_combination(combination, run_number, total_runs, log_file, status="STARTED", error=None, command_type=None, full_command=None):
     """Log parameter combination to a text file with status tracking."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(log_file, 'a') as f:
-        f.write(f"\nRun #{run_number}/{total_runs} - {timestamp} - {status}\n")
+        f.write(f"\nRun #{run_number}/{total_runs} - {timestamp} - {status}")
+        if command_type:
+            f.write(f" ({command_type})")
+        f.write("\n")
         for param_name, param_value in combination.items():
             f.write(f"{param_name}: {param_value}\n")
+        if full_command:
+            f.write(f"Command: {' '.join(full_command)}\n")
         if error:
             f.write(f"ERROR: {error}\n")
         f.write("-" * 50 + "\n")
@@ -84,7 +90,7 @@ def get_combination_description(sweep_params, combination_num, total_combination
     
     return f"Set {combination_num}/{total_combinations}: {param_description}"
 
-def run_command(command_args, description="Running command", prefix=None, log_file=None, run_number=None, total_runs=None, combination=None):
+def run_command(command_args, description="Running command", prefix=None, log_file=None, run_number=None, total_runs=None, combination=None, command_type=None):
     """Helper function to execute shell commands and stream output to CLI."""
     print(f"\n--- {description} ---")
     print(f"Command: {' '.join(command_args)}")
@@ -106,24 +112,24 @@ def run_command(command_args, description="Running command", prefix=None, log_fi
             error_msg = f"Command exited with non-zero status {process.returncode}"
             print(f"\nError: {error_msg}")
             if log_file and run_number and total_runs and combination:
-                log_parameter_combination(combination, run_number, total_runs, log_file, status="FAILED", error=error_msg)
+                log_parameter_combination(combination, run_number, total_runs, log_file, status="FAILED", error=error_msg, command_type=command_type, full_command=command_args)
             exit(1) # Exit if a command fails
         else:
             print("\nCommand completed successfully.")
             if log_file and run_number and total_runs and combination:
-                log_parameter_combination(combination, run_number, total_runs, log_file, status="COMPLETED")
+                log_parameter_combination(combination, run_number, total_runs, log_file, status="COMPLETED", command_type=command_type, full_command=command_args)
 
     except FileNotFoundError:
         error_msg = f"Command not found. Make sure '{command_args[0]}' is in your PATH or correctly specified."
         print(f"Error: {error_msg}")
         if log_file and run_number and total_runs and combination:
-            log_parameter_combination(combination, run_number, total_runs, log_file, status="FAILED", error=error_msg)
+            log_parameter_combination(combination, run_number, total_runs, log_file, status="FAILED", error=error_msg, command_type=command_type, full_command=command_args)
         exit(1)
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
         print(f"Error: {error_msg}")
         if log_file and run_number and total_runs and combination:
-            log_parameter_combination(combination, run_number, total_runs, log_file, status="FAILED", error=error_msg)
+            log_parameter_combination(combination, run_number, total_runs, log_file, status="FAILED", error=error_msg, command_type=command_type, full_command=command_args)
         exit(1)
 
 def main():
@@ -139,6 +145,7 @@ def main():
     with open(log_file, 'w') as f:
         f.write(f"Parameter Sweep Log - {EXPERIMENT_NAME}\n")
         f.write(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Resuming from run #{START_FROM_RUN}\n")
         f.write("\nSweep Configuration:\n")
         for param_name, param_values in SWEEP_CONFIG["SWEEP_PARAMS"].items():
             f.write(f"{param_name}: {param_values}\n")
@@ -150,6 +157,7 @@ def main():
     parameter_combinations = generate_parameter_combinations()
     
     print(f"Starting parameter sweep: {EXPERIMENT_NAME}")
+    print(f"Resuming from run #{START_FROM_RUN}")
     print(f"Generated {len(parameter_combinations)} parameter combinations to test.")
     print(f"Logging to: {log_file}")
     
@@ -159,6 +167,10 @@ def main():
         print(f"  {param_name}: {param_values}")
     
     for i, combination in enumerate(parameter_combinations):
+        # Skip runs before START_FROM_RUN
+        if i + 1 < START_FROM_RUN:
+            continue
+            
         description = get_combination_description(combination, i+1, len(parameter_combinations))
         run_prefix = f"Run {i+1}/{len(parameter_combinations)}"
         
@@ -174,13 +186,13 @@ def main():
         full_train_cmd = TRAIN_BASE_CMD + train_args
         run_command(full_train_cmd, f"Training for {description}", prefix=run_prefix, 
                    log_file=log_file, run_number=i+1, total_runs=len(parameter_combinations), 
-                   combination=combination)
+                   combination=combination, command_type="TRAIN")
 
         # Construct the full play command (no extra args needed for play usually)
         full_play_cmd = PLAY_BASE_CMD
         run_command(full_play_cmd, f"Playing for {description}", prefix=run_prefix,
                    log_file=log_file, run_number=i+1, total_runs=len(parameter_combinations),
-                   combination=combination)
+                   combination=combination, command_type="PLAY")
 
     print(f"\n🎉 All {len(parameter_combinations)} parameter combinations finished!")
     

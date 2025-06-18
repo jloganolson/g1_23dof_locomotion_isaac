@@ -22,7 +22,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.terrains import TerrainImporterCfg
-# from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, ImuCfg, patterns
+from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 
 from . import mdp
 import torch
