@@ -347,7 +347,7 @@ class RewardsCfg:
     )
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
-        weight=5.,
+        weight=3.,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
@@ -358,7 +358,7 @@ class RewardsCfg:
 
     both_feet_air = RewTerm(
         func=mdp.both_feet_air,
-        weight=-0.1,
+        weight=-0.5,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
         },
@@ -387,7 +387,7 @@ class RewardsCfg:
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-0.2,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -507,14 +507,11 @@ class G123dofLocomotionIsaacEnvCfg(ManagerBasedRLEnvCfg):
         self.rewards.lin_vel_z_l2.weight = -0.2
         self.rewards.undesired_contacts = None
         self.rewards.flat_orientation_l2.weight = -1.0
-        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.action_rate_l2.weight = -0.01
         self.rewards.dof_acc_l2.weight = -1.0e-7
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint",".*_ankle_pitch_joint", ".*_ankle_roll_joint"]
         )
-        # self.rewards.feet_air_time.weight = 5.
-        # self.rewards.feet_air_time.params["threshold"] = 0.2
-        # self.rewards.dof_torques_l2.weight = -2.0e-6
         self.rewards.dof_torques_l2.weight = -1.0e-4
 
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
