@@ -11,7 +11,7 @@ https://github.com/user-attachments/assets/e0011e58-58f1-439d-8fe0-98765367415e
 ### Training
 ```bash
 # Basic training
-python scripts/rsl_rl/train.py --task=Loco --headless --logger wandb
+python scripts/rsl_rl/train.py --task=Loco --headless
 ```
 
 ### Evaluation
