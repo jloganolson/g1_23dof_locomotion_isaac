@@ -30,11 +30,11 @@ class TestSceneCfg(InteractiveSceneCfg):
     )
 
 
-
-
     # robot
     RobotA = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/RobotA")
     RobotB = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/RobotB")
+
+    imu_pelvis = ImuCfg(prim_path="{ENV_REGEX_NS}/RobotA/pelvis",offset=OffsetCfg(pos=(0.04525, 0.0, -0.08339)))
     
 
 
@@ -134,6 +134,26 @@ def scene_reset(scene: InteractiveScene):
     scene["RobotB"].write_joint_state_to_sim(joint_pos, joint_vel)
     scene.reset()
 
+def quat_rotate_inverse(q, v):
+    """Rotate vector v by the inverse of quaternion q (to go from world to body frame)"""
+    # q = [w, x, y, z]
+    w, x, y, z = q[0, 0], q[0, 1], q[0, 2], q[0, 3]
+    
+    # Inverse of quaternion (conjugate for unit quaternions)
+    q_inv = torch.tensor([[w, -x, -y, -z]], device=q.device)
+    
+    # Convert vector to quaternion form [0, vx, vy, vz]
+    v_quat = torch.cat([torch.zeros(1, 1, device=v.device), v], dim=1)
+    
+    # Quaternion multiplication: q_inv * v * q
+    # This is equivalent to rotating v by q^-1
+    # ... (quaternion multiplication implementation)
+    
+    # Simplified rotation formula for efficiency:
+    t = 2 * torch.cross(q_inv[:, 1:], v, dim=1)
+    rotated = v + w * t + torch.cross(q_inv[:, 1:], t, dim=1)
+    
+    return rotated
 
 
 # dp.undesired_contacts,
@@ -171,8 +191,15 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
             mask = torch.zeros_like(random_pos)
             mask[mask_indices] = 1.0
 
-            gravity = scene["RobotA"].data.projected_gravity_b
- 
+            # gravity = scene["RobotA"].data.projected_gravity_b
+            quat_w = scene["imu_pelvis"].data.quat_w  # [w, x, y, z] format
+
+            # World gravity vector (normalized, pointing down)
+            gravity_world = torch.tensor([[0.0, 0.0, -1.0]], device='cuda:0')
+
+            projected_gravity_from_imu = quat_rotate_inverse(quat_w, gravity_world)
+            print("Gravity from IMU quaternion:", projected_gravity_from_imu)
+            print("Original projected gravity:", scene["RobotA"].data.projected_gravity_b)
             # # Combine default and mirrored actions based on mask for each robot
             # combined_actions_a = torch.where(mask == 1.0,
             #                               mirrored_actions[0],
