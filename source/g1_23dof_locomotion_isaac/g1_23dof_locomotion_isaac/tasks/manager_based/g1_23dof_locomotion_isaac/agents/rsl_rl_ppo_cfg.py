@@ -154,7 +154,7 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 2000
     save_interval = 50
-    experiment_name = "g1_23dof_v17_rc"
+    experiment_name = "g1_23dof_v18"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

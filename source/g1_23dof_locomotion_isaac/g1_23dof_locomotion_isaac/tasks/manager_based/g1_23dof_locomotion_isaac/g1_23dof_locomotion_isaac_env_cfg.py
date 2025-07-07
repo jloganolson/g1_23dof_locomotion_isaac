@@ -195,25 +195,60 @@ class EventCfg:
     """Configuration for events."""
 
     #startup
+    # Floor / foot friction: =U(0.4, 1.0) - matching MuJoCo rand_dynamics
     physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.8, 0.8),
-            "dynamic_friction_range": (0.6, 0.6),
+            "static_friction_range": (0.4, 1.0),
+            "dynamic_friction_range": (0.4, 1.0),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
     )
 
-    add_base_mass = EventTerm(
+    # Scale all link masses: *U(0.9, 1.1) - matching MuJoCo rand_dynamics
+    randomize_body_mass = EventTerm(
         func=mdp.randomize_rigid_body_mass,
         mode="startup",
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-5.0, 5.0),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "mass_distribution_params": (0.9, 1.1),
+            "operation": "scale",
+        },
+    )
+
+    # Add mass to torso: +U(-1.0, 1.0) - matching MuJoCo rand_dynamics
+    add_torso_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+            "mass_distribution_params": (-1.0, 1.0),
             "operation": "add",
+        },
+    )
+
+    # Scale static friction: *U(0.5, 2.0) - matching MuJoCo rand_dynamics joint friction
+    randomize_joint_friction = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "friction_distribution_params": (0.5, 2.0),
+            "operation": "scale",
+        },
+    )
+
+    # Scale armature: *U(1.0, 1.05) - matching MuJoCo rand_dynamics
+    randomize_joint_armature = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "armature_distribution_params": (1.0, 1.05),
+            "operation": "scale",
         },
     )
     # cribbed from https://github.com/NVlabs/HOVER/blob/43ee08b637c84f3ad11b6af45a89586bf7f65630/neural_wbc/isaac_lab_wrapper/neural_wbc/isaac_lab_wrapper/events/event_cfg.py#L88
@@ -485,7 +520,7 @@ class G123dofLocomotionIsaacEnvCfg(ManagerBasedRLEnvCfg):
 
         # Randomization
         self.events.push_robot = None
-        self.events.add_base_mass = None
+        self.events.add_torso_mass = None
         self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
         self.events.base_external_force_torque.params["asset_cfg"].body_names = ["torso_link"]
         # self.events.reset_robot_rigid_body_mass.params["asset_cfg"].body_names = self.mass_randomized_body_names

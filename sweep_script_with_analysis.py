@@ -6,9 +6,10 @@ from datetime import datetime
 
 
 
+
 # Experiment configuration
-EXPERIMENT_NAME = "g1_23dof_sweep_v16"  # Must match cfg 
-START_FROM_RUN = 27  # Set to 1 to start from beginning, or higher to resume from a specific run
+EXPERIMENT_NAME = "g1_23dof_sweep_v18"  # Must match cfg 
+START_FROM_RUN = 1  # Set to 1 to start from beginning, or higher to resume from a specific run
 
 # =============================================================================
 # PARAMETER SWEEP CONFIGURATION - CENTRALIZED
@@ -22,7 +23,7 @@ SWEEP_CONFIG = {
         "env.rewards.feet_air_time.weight": [1.0,3.0,5.0],
         "env.rewards.both_feet_air.weight": [-0.1, -0.5, 0.],
         "env.rewards.action_rate_l2.weight": [-0.005,-0.01],
-        "env.rewards.joint_deviation_arms.weight": [-0.1,-.2],
+        # "env.rewards.joint_deviation_arms.weight": [-0.1,-.2],
 
         # "env.rewards.dof_acc_l2.weight": [-5.0e-7, -1.0e-6],
         # "env.rewards.track_lin_vel_xy_exp.weight": [1.,2.],

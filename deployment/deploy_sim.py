@@ -21,125 +21,15 @@ import mujoco.viewer as viewer
 import numpy as np
 import torch
 from keyboard_reader import KeyboardController
+from utils import (
+    default_angles_config,
+
+    init_joint_mappings,
+    remap_pytorch_to_mujoco,
+    remap_mujoco_to_pytorch,
+)
 
 POLICY_PATH = "policy.pt"
-
-
-class G1MjxJointIndex:
-    """Joint indices based on the order in g1_mjx_alt.xml (23 DoF model)."""
-    LeftHipPitch = 0
-    LeftHipRoll = 1
-    LeftHipYaw = 2
-    LeftKnee = 3
-    LeftAnklePitch = 4
-    LeftAnkleRoll = 5
-    RightHipPitch = 6
-    RightHipRoll = 7
-    RightHipYaw = 8
-    RightKnee = 9
-    RightAnklePitch = 10
-    RightAnkleRoll = 11
-    WaistYaw = 12
-    LeftShoulderPitch = 13
-    LeftShoulderRoll = 14
-    LeftShoulderYaw = 15
-    LeftElbow = 16
-    LeftWristRoll = 17
-    RightShoulderPitch = 18
-    RightShoulderRoll = 19
-    RightShoulderYaw = 20
-    RightElbow = 21
-    RightWristRoll = 22
-
-
-class G1PyTorchJointIndex:
-    """Joint indices based on the order in your PyTorch model."""
-    # Actual joint order from PyTorch training:
-    # ['left_hip_pitch_joint', 'right_hip_pitch_joint', 'waist_yaw_joint', 'left_hip_roll_joint', 'right_hip_roll_joint', 
-    # 'left_hip_yaw_joint', 'right_hip_yaw_joint', 'left_knee_joint', 'right_knee_joint', 'left_shoulder_pitch_joint', 'right_shoulder_pitch_joint',
-    # 'left_ankle_pitch_joint', 'right_ankle_pitch_joint', 'left_shoulder_roll_joint', 'right_shoulder_roll_joint', 
-    # 'left_ankle_roll_joint', 'right_ankle_roll_joint', 'left_shoulder_yaw_joint', 'right_shoulder_yaw_joint', 
-    # 'left_elbow_joint', 'right_elbow_joint', 'left_wrist_roll_joint', 'right_wrist_roll_joint']
-    
-    LeftHipPitch = 0       # left_hip_pitch_joint
-    RightHipPitch = 1      # right_hip_pitch_joint
-    WaistYaw = 2           # waist_yaw_joint
-    LeftHipRoll = 3        # left_hip_roll_joint
-    RightHipRoll = 4       # right_hip_roll_joint
-    LeftHipYaw = 5         # left_hip_yaw_joint
-    RightHipYaw = 6        # right_hip_yaw_joint
-    LeftKnee = 7           # left_knee_joint
-    RightKnee = 8          # right_knee_joint
-    LeftShoulderPitch = 9  # left_shoulder_pitch_joint
-    RightShoulderPitch = 10 # right_shoulder_pitch_joint
-    LeftAnklePitch = 11    # left_ankle_pitch_joint
-    RightAnklePitch = 12   # right_ankle_pitch_joint
-    LeftShoulderRoll = 13  # left_shoulder_roll_joint
-    RightShoulderRoll = 14 # right_shoulder_roll_joint
-    LeftAnkleRoll = 15     # left_ankle_roll_joint
-    RightAnkleRoll = 16    # right_ankle_roll_joint
-    LeftShoulderYaw = 17   # left_shoulder_yaw_joint
-    RightShoulderYaw = 18  # right_shoulder_yaw_joint
-    LeftElbow = 19         # left_elbow_joint
-    RightElbow = 20        # right_elbow_joint
-    LeftWristRoll = 21     # left_wrist_roll_joint
-    RightWristRoll = 22    # right_wrist_roll_joint
-
-
-# Mapping from PyTorch model joint order to MuJoCo joint order
-pytorch2mujoco_idx = [
-    # PyTorch idx -> MuJoCo idx
-    G1MjxJointIndex.LeftHipPitch,      # 0: left_hip_pitch_joint -> LeftHipPitch (0)
-    G1MjxJointIndex.RightHipPitch,     # 1: right_hip_pitch_joint -> RightHipPitch (6)
-    G1MjxJointIndex.WaistYaw,          # 2: waist_yaw_joint -> WaistYaw (12)
-    G1MjxJointIndex.LeftHipRoll,       # 3: left_hip_roll_joint -> LeftHipRoll (1)
-    G1MjxJointIndex.RightHipRoll,      # 4: right_hip_roll_joint -> RightHipRoll (7)
-    G1MjxJointIndex.LeftHipYaw,        # 5: left_hip_yaw_joint -> LeftHipYaw (2)
-    G1MjxJointIndex.RightHipYaw,       # 6: right_hip_yaw_joint -> RightHipYaw (8)
-    G1MjxJointIndex.LeftKnee,          # 7: left_knee_joint -> LeftKnee (3)
-    G1MjxJointIndex.RightKnee,         # 8: right_knee_joint -> RightKnee (9)
-    G1MjxJointIndex.LeftShoulderPitch, # 9: left_shoulder_pitch_joint -> LeftShoulderPitch (13)
-    G1MjxJointIndex.RightShoulderPitch,# 10: right_shoulder_pitch_joint -> RightShoulderPitch (18)
-    G1MjxJointIndex.LeftAnklePitch,    # 11: left_ankle_pitch_joint -> LeftAnklePitch (4)
-    G1MjxJointIndex.RightAnklePitch,   # 12: right_ankle_pitch_joint -> RightAnklePitch (10)
-    G1MjxJointIndex.LeftShoulderRoll,  # 13: left_shoulder_roll_joint -> LeftShoulderRoll (14)
-    G1MjxJointIndex.RightShoulderRoll, # 14: right_shoulder_roll_joint -> RightShoulderRoll (19)
-    G1MjxJointIndex.LeftAnkleRoll,     # 15: left_ankle_roll_joint -> LeftAnkleRoll (5)
-    G1MjxJointIndex.RightAnkleRoll,    # 16: right_ankle_roll_joint -> RightAnkleRoll (11)
-    G1MjxJointIndex.LeftShoulderYaw,   # 17: left_shoulder_yaw_joint -> LeftShoulderYaw (15)
-    G1MjxJointIndex.RightShoulderYaw,  # 18: right_shoulder_yaw_joint -> RightShoulderYaw (20)
-    G1MjxJointIndex.LeftElbow,         # 19: left_elbow_joint -> LeftElbow (16)
-    G1MjxJointIndex.RightElbow,        # 20: right_elbow_joint -> RightElbow (21)
-    G1MjxJointIndex.LeftWristRoll,     # 21: left_wrist_roll_joint -> LeftWristRoll (17)
-    G1MjxJointIndex.RightWristRoll,    # 22: right_wrist_roll_joint -> RightWristRoll (22)
-]
-
-# Inverse mapping from MuJoCo joint order to PyTorch model order
-# This will be automatically generated in init_joint_mappings()
-mujoco2pytorch_idx = [0] * 23
-
-
-def init_joint_mappings():
-    """Initialize the inverse mapping from MuJoCo to PyTorch indices."""
-    global mujoco2pytorch_idx
-    for pytorch_idx, mujoco_idx in enumerate(pytorch2mujoco_idx):
-        mujoco2pytorch_idx[mujoco_idx] = pytorch_idx
-
-
-def remap_pytorch_to_mujoco(pytorch_actions: np.ndarray) -> np.ndarray:
-    """Remap actions from PyTorch model joint order to MuJoCo joint order."""
-    mujoco_actions = np.zeros_like(pytorch_actions)
-    for pytorch_idx, mujoco_idx in enumerate(pytorch2mujoco_idx):
-        mujoco_actions[mujoco_idx] = pytorch_actions[pytorch_idx]
-    return mujoco_actions
-
-
-def remap_mujoco_to_pytorch(mujoco_data: np.ndarray) -> np.ndarray:
-    """Remap data from MuJoCo joint order to PyTorch model joint order."""
-    pytorch_data = np.zeros_like(mujoco_data)
-    for pytorch_idx, mujoco_idx in enumerate(pytorch2mujoco_idx):
-        pytorch_data[pytorch_idx] = mujoco_data[mujoco_idx]
-    return pytorch_data
 
 
 class TorchController:
@@ -155,7 +45,7 @@ class TorchController:
       vel_scale_y: float = 1.0,
       vel_scale_rot: float = 1.0,
   ):
-    self._policy = torch.load(policy_path, weights_only=True)
+    self._policy = torch.load(policy_path, weights_only=False)
     self._policy.eval()  # Set to evaluation mode
 
     self._action_scale = action_scale
@@ -257,37 +147,9 @@ def load_callback(model=None, data=None):
   n_substeps = 4
   model.opt.timestep = sim_dt
 
-  # Define default angles based on env.yaml configuration
-  # These values are in MuJoCo joint order
-  default_angles_config = np.array([
-    -0.2,   # LeftHipPitch
-    0.0,    # LeftHipRoll
-    0.0,    # LeftHipYaw
-    0.42,   # LeftKnee
-    -0.23,  # LeftAnklePitch
-    0.0,    # LeftAnkleRoll
-    -0.2,   # RightHipPitch
-    0.0,    # RightHipRoll
-    0.0,    # RightHipYaw
-    0.42,   # RightKnee
-    -0.23,  # RightAnklePitch
-    0.0,    # RightAnkleRoll
-    0.0,    # WaistYaw
-    0.35,   # LeftShoulderPitch
-    0.16,   # LeftShoulderRoll
-    0.0,    # LeftShoulderYaw
-    0.87,   # LeftElbow
-    0.0,    # LeftWristRoll
-    0.35,   # RightShoulderPitch
-    -0.16,  # RightShoulderRoll
-    0.0,    # RightShoulderYaw
-    0.87,   # RightElbow
-    0.0,    # RightWristRoll
-  ])
-
   policy = TorchController(
       policy_path=POLICY_PATH,
-      default_angles=default_angles_config,
+      default_angles=np.array(default_angles_config),
       n_substeps=n_substeps,
       action_scale=0.5,
       vel_scale_x=1.0,
